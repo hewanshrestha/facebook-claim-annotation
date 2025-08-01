@@ -61,9 +61,13 @@ def get_collection_name(annotator_id):
     return annotator_id
 
 def get_mongodb_connection():
-    """Get MongoDB connection"""
+    """Get MongoDB connection with SSL configuration for Streamlit Cloud"""
     try:
-        client = MongoClient(MONGODB_URI)
+        client = MongoClient(
+            MONGODB_URI,
+            tls=True,
+            tlsAllowInvalidCertificates=True
+        )
         # Test the connection
         client.admin.command('ping')
         return client

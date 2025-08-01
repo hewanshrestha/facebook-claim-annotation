@@ -63,8 +63,8 @@ def get_mongodb_uri():
     print(f"   Password: {'*' * len(password) if password else 'None'}")
     print(f"   Cluster: {cluster_url}")
     
-    # Simplified connection string for MongoDB Atlas - TLS is handled automatically
-    return f"mongodb+srv://{username}:{password}@{cluster_url}/?retryWrites=true&w=majority&appName={app_name}"
+    # Connection string optimized for Streamlit Cloud deployment
+    return f"mongodb+srv://{username}:{password}@{cluster_url}/?retryWrites=true&w=majority&appName={app_name}&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&socketTimeoutMS=10000&maxPoolSize=1"
 
 MONGODB_CONFIG = {
     'URI': get_mongodb_uri(),
