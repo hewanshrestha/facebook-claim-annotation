@@ -14,7 +14,7 @@ from PIL import Image
 import logging
 from pathlib import Path
 import time
-import ssl
+import certifi
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, PyMongoError
 from pymongo import ReplaceOne
@@ -62,56 +62,20 @@ def get_collection_name(annotator_id):
     return annotator_id
 
 def get_mongodb_connection():
-    """Get MongoDB connection with SSL configuration for Streamlit Cloud"""
+    """Get MongoDB connection with proper TLS certificate handling"""
     try:
-        # Detect if running on Streamlit Cloud
-        is_streamlit_cloud = os.getenv('STREAMLIT_SHARING_MODE') or 'streamlit.app' in os.getenv('HOSTNAME', '')
-        
-        if is_streamlit_cloud:
-            logger.info("Detected Streamlit Cloud environment, using optimized settings")
-            # For Streamlit Cloud: Use the most basic connection possible
-            client = MongoClient(
-                MONGODB_URI,
-                serverSelectionTimeoutMS=30000,
-                connectTimeoutMS=30000,
-                socketTimeoutMS=30000,
-                retryWrites=True,
-                w='majority'
-            )
-        else:
-            logger.info("Detected local environment, using standard SSL settings")
-            # For localhost: Create a permissive SSL context
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
-            
-            # Try connection with custom SSL context first
-            try:
-                client = MongoClient(
-                    MONGODB_URI,
-                    ssl_context=ssl_context,
-                    serverSelectionTimeoutMS=10000
-                )
-                # Test the connection
-                client.admin.command('ping')
-                return client
-            except Exception as ssl_error:
-                logger.warning(f"SSL context connection failed, trying alternative: {ssl_error}")
-                
-                # Fallback: Try with minimal TLS settings
-                client = MongoClient(
-                    MONGODB_URI,
-                    tls=True,
-                    tlsAllowInvalidCertificates=True,
-                    serverSelectionTimeoutMS=15000,
-                    connectTimeoutMS=15000,
-                    socketTimeoutMS=15000
-                )
-        
+        # Use the recommended approach for Streamlit Cloud
+        client = MongoClient(
+            MONGODB_URI,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=15000,
+            connectTimeoutMS=15000,
+            socketTimeoutMS=15000
+        )
         # Test the connection
         client.admin.command('ping')
         return client
-            
     except ConnectionFailure as e:
         logger.error(f"MongoDB connection failed: {e}")
         raise
@@ -422,7 +386,8 @@ def save_annotation(annotator_id, item_id, annotation, current_item):
             "post_id": original_post_id,
             "text": current_item["text"],
             "image_id": current_item["image_id"],
-            "label": annotation
+            "label": annotation,
+            "timestamp": datetime.now().isoformat()
         }
         
         # Convert to JSON string
@@ -564,7 +529,8 @@ def update_annotation(annotator_id, item_id, new_annotation, current_item):
                 "post_id": original_post_id,
                 "text": current_item["text"],
                 "image_id": current_item["image_id"],
-                "label": new_annotation
+                "label": new_annotation,
+                "timestamp": datetime.now().isoformat()
             }
             
             # Update the document in MongoDB
@@ -619,7 +585,8 @@ def update_annotation(annotator_id, item_id, new_annotation, current_item):
                     "post_id": original_post_id,
                     "text": current_item["text"],
                     "image_id": current_item["image_id"],
-                    "label": new_annotation
+                    "label": new_annotation,
+                    "timestamp": datetime.now().isoformat()
                 }
                 updated = True
                 break
@@ -666,7 +633,8 @@ def save_all_temporary_annotations(annotator_id):
                         "post_id": original_post_id,
                         "text": annotation_data["text"],
                         "image_id": annotation_data["image_id"],
-                        "label": annotation_data["annotation"]
+                        "label": annotation_data["annotation"],
+                        "timestamp": datetime.now().isoformat()
                     }
                     
                     operations.append(
@@ -713,7 +681,8 @@ def save_all_temporary_annotations(annotator_id):
                     "post_id": original_post_id,
                     "text": annotation_data["text"],
                     "image_id": annotation_data["image_id"],
-                    "label": annotation_data["annotation"]
+                    "label": annotation_data["annotation"],
+                    "timestamp": datetime.now().isoformat()
                 }
                 
                 jsonl_content += json.dumps(local_annotation_data, ensure_ascii=False) + '\n'
