@@ -1,6 +1,7 @@
 # config.py
 """
 Configuration file for the annotation interface
+WBu3KrMCpbFzqAmt
 """
 import os
 
@@ -13,7 +14,7 @@ def get_mongodb_uri():
     """Construct MongoDB URI from Streamlit secrets only"""
     username = None
     password = None
-    cluster_url = 'claim-annotation.tjy7vfc.mongodb.net'
+    cluster_url = 'claim-annotation.eimxn2e.mongodb.net'
     app_name = 'Claim-Annotation'
     source = "unknown"
     
@@ -26,7 +27,7 @@ def get_mongodb_uri():
         if hasattr(st.secrets, 'mongodb'):
             username = st.secrets.mongodb.MONGODB_USERNAME
             password = st.secrets.mongodb.MONGODB_PASSWORD
-            cluster_url = st.secrets.mongodb.get('MONGODB_CLUSTER_URL', 'claim-annotation.tjy7vfc.mongodb.net')
+            cluster_url = st.secrets.mongodb.get('MONGODB_CLUSTER_URL', 'claim-annotation.eimxn2e.mongodb.net')
             app_name = st.secrets.mongodb.get('MONGODB_APP_NAME', 'Claim-Annotation')
             source = "streamlit_secrets_nested"
             print(f"✅ Reading MongoDB credentials from: {source}")
@@ -34,7 +35,7 @@ def get_mongodb_uri():
         elif hasattr(st.secrets, 'MONGODB_USERNAME'):
             username = st.secrets.MONGODB_USERNAME
             password = st.secrets.MONGODB_PASSWORD
-            cluster_url = st.secrets.get('MONGODB_CLUSTER_URL', 'claim-annotation.tjy7vfc.mongodb.net')
+            cluster_url = st.secrets.get('MONGODB_CLUSTER_URL', 'claim-annotation.eimxn2e.mongodb.net')
             app_name = st.secrets.get('MONGODB_APP_NAME', 'Claim-Annotation')
             source = "streamlit_secrets_flat"
             print(f"✅ Reading MongoDB credentials from: {source}")
@@ -62,6 +63,7 @@ def get_mongodb_uri():
     print(f"   Password: {'*' * len(password) if password else 'None'}")
     print(f"   Cluster: {cluster_url}")
     
+    # Simplified connection string for MongoDB Atlas - TLS is handled automatically
     return f"mongodb+srv://{username}:{password}@{cluster_url}/?retryWrites=true&w=majority&appName={app_name}"
 
 MONGODB_CONFIG = {

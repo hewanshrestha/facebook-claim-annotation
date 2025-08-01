@@ -9,3 +9,5 @@ guidelines_with_topics.md
 */__pycache__
 .python-version
 .streamlit/
+.venv
+annotation_interface/annotator_0*
