@@ -1,5 +1,5 @@
 .DS_Store
-find_dataset/
+final_dataset
 input/
 output/
 src/
