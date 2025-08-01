@@ -64,23 +64,30 @@ def get_collection_name(annotator_id):
 def get_mongodb_connection():
     """Get MongoDB connection with proper TLS certificate handling"""
     try:
-        # Use the recommended approach for Streamlit Cloud
+        # Use optimized settings for Streamlit Cloud deployment
         client = MongoClient(
             MONGODB_URI,
             tls=True,
             tlsCAFile=certifi.where(),
-            serverSelectionTimeoutMS=15000,
-            connectTimeoutMS=15000,
-            socketTimeoutMS=15000
+            serverSelectionTimeoutMS=30000,  # Increased timeout for cloud deployment
+            connectTimeoutMS=30000,  # Increased timeout for cloud deployment
+            socketTimeoutMS=30000,  # Increased timeout for cloud deployment
+            maxPoolSize=10,  # Connection pool for better performance
+            retryWrites=True,  # Enable retryable writes
+            w='majority'  # Write concern for data consistency
         )
-        # Test the connection
+        # Test the connection with timeout
         client.admin.command('ping')
+        logger.info("✅ MongoDB connection established successfully")
         return client
     except ConnectionFailure as e:
-        logger.error(f"MongoDB connection failed: {e}")
+        logger.error(f"❌ MongoDB connection failed: {e}")
+        st.error(f"MongoDB Connection Error: {str(e)}")
+        st.error("Please check your internet connection and MongoDB credentials.")
         raise
     except Exception as e:
-        logger.error(f"Error connecting to MongoDB: {e}")
+        logger.error(f"❌ Error connecting to MongoDB: {e}")
+        st.error(f"Unexpected MongoDB Error: {str(e)}")
         raise
 
 def get_mongodb_collection(annotator_id):
@@ -113,11 +120,49 @@ def test_mongodb_connection():
         count = sample_collection.count_documents({})
         
         client.close()
-        return True, f"MongoDB connection successful. Database and collections accessible."
+        return True, f"MongoDB connection successful. Database and collections accessible. Document count: {count}"
     except ConnectionFailure as e:
         return False, f"MongoDB connection failed: {str(e)}"
     except Exception as e:
         return False, f"MongoDB error: {str(e)}"
+
+def get_mongodb_health_status():
+    """Get real-time MongoDB health status for debugging"""
+    try:
+        import time
+        start_time = time.time()
+        
+        # Test basic connection
+        client = get_mongodb_connection()
+        connection_time = time.time() - start_time
+        
+        # Test database operations
+        db = client[MONGODB_DATABASE]
+        collections = db.list_collection_names()
+        
+        # Test write operation
+        test_collection = db['health_check']
+        test_doc = {"timestamp": datetime.now().isoformat(), "status": "healthy"}
+        test_collection.insert_one(test_doc)
+        
+        # Clean up test document
+        test_collection.delete_one({"status": "healthy"})
+        
+        client.close()
+        
+        return {
+            "status": "healthy",
+            "connection_time_ms": round(connection_time * 1000, 2),
+            "database": MONGODB_DATABASE,
+            "collections_count": len(collections),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 def get_mongodb_stats(annotator_id):
     """Get MongoDB annotation statistics for an annotator"""
@@ -742,13 +787,49 @@ def main():
         st.write(f"**Current Storage:** {STORAGE_TYPE.title()}")
         
         if STORAGE_TYPE == 'mongodb':
-            with st.spinner("Testing MongoDB connection..."):
-                is_connected, status_msg = test_mongodb_connection()
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                with st.spinner("Testing MongoDB connection..."):
+                    is_connected, status_msg = test_mongodb_connection()
+            with col2:
+                if st.button("🔄 Refresh", help="Refresh connection status"):
+                    st.rerun()
+            
             if is_connected:
                 st.success("✅ " + status_msg)
+                
+                # Real-time health monitoring
+                with st.expander("📊 Real-time Health Status", expanded=False):
+                    health_status = get_mongodb_health_status()
+                    if health_status["status"] == "healthy":
+                        st.success(f"🟢 System Healthy")
+                        st.write(f"**Connection Time:** {health_status['connection_time_ms']}ms")
+                        st.write(f"**Database:** {health_status['database']}")
+                        st.write(f"**Collections:** {health_status['collections_count']}")
+                        st.write(f"**Last Check:** {health_status['timestamp']}")
+                    else:
+                        st.error(f"🔴 System Unhealthy")
+                        st.error(f"**Error:** {health_status['error']}")
+                        st.write(f"**Last Check:** {health_status['timestamp']}")
             else:
                 st.error("❌ " + status_msg)
                 st.warning("Please check your MongoDB configuration or switch to local storage.")
+                
+                # Troubleshooting tips
+                with st.expander("🔧 Troubleshooting Tips", expanded=True):
+                    st.markdown("""
+                    **Common Issues:**
+                    1. **Missing Dependencies:** Ensure `pymongo` and `certifi` are in requirements.txt
+                    2. **Invalid Credentials:** Check MongoDB username/password in Streamlit secrets
+                    3. **Network Issues:** Verify internet connectivity and MongoDB Atlas whitelist
+                    4. **IP Whitelist:** Add `0.0.0.0/0` to MongoDB Atlas IP whitelist for Streamlit Cloud
+                    
+                    **Deployment Checklist:**
+                    - ✅ Add MongoDB secrets in Streamlit Cloud app settings
+                    - ✅ Update requirements.txt with MongoDB dependencies
+                    - ✅ Configure MongoDB Atlas IP whitelist
+                    - ✅ Verify cluster URL and credentials
+                    """)
         else:
             st.info("💾 Using local file storage")
         

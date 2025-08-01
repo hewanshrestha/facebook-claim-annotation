@@ -21,8 +21,6 @@ def get_mongodb_uri():
     # Only try to get from Streamlit secrets
     try:
         import streamlit as st
-        # print("Streamlit secrets found")
-        # print(st.secrets)
         # Try nested structure first
         if hasattr(st.secrets, 'mongodb'):
             username = st.secrets.mongodb.MONGODB_USERNAME
@@ -42,29 +40,42 @@ def get_mongodb_uri():
         else:
             source = "streamlit_secrets_not_found"
             print(f"❌ No MongoDB credentials found in Streamlit secrets")
+            print(f"   Available secrets keys: {list(st.secrets.keys()) if hasattr(st.secrets, 'keys') else 'None'}")
     except (ImportError, AttributeError) as e:
         print(f"❌ Failed to read from Streamlit secrets: {e}")
         print("   This is normal if running outside of Streamlit")
         source = "streamlit_not_available"
     
     if not username or not password:
-        raise ValueError(
-            f"MongoDB credentials not found. Source attempted: {source}. "
-            "Please set MongoDB credentials in .streamlit/secrets.toml file:\n"
+        error_msg = (
+            f"MongoDB credentials not found. Source attempted: {source}\n"
+            "For Streamlit Cloud deployment, add secrets in your app settings:\n"
+            "- Go to your Streamlit Cloud app dashboard\n"
+            "- Navigate to Settings > Secrets\n"
+            "- Add the following secrets:\n\n"
             "[mongodb]\n"
             "MONGODB_USERNAME = \"your_username\"\n"
             "MONGODB_PASSWORD = \"your_password\"\n"
             "MONGODB_CLUSTER_URL = \"your_cluster.mongodb.net\"\n"
-            "MONGODB_APP_NAME = \"Claim-Annotation\""
+            "MONGODB_APP_NAME = \"Claim-Annotation\"\n\n"
+            "For local development, create .streamlit/secrets.toml with the same content."
         )
+        raise ValueError(error_msg)
     
     print(f"🔑 Using MongoDB credentials from: {source}")
     print(f"   Username: {username}")
-    print(f"   Password: {'*' * len(password) if password else 'None'}")
+    print(f"   Password: {'*' * min(len(password), 8) if password else 'None'}")
     print(f"   Cluster: {cluster_url}")
     
-    # Simplified connection string for MongoDB Atlas
-    return f"mongodb+srv://{username}:{password}@{cluster_url}/?retryWrites=true&w=majority&appName={app_name}"
+    # Enhanced connection string with additional parameters for reliability
+    connection_string = (
+        f"mongodb+srv://{username}:{password}@{cluster_url}/"
+        f"?retryWrites=true&w=majority&appName={app_name}"
+        f"&maxPoolSize=10&serverSelectionTimeoutMS=30000"
+    )
+    
+    print(f"🔗 MongoDB URI constructed successfully")
+    return connection_string
 
 MONGODB_CONFIG = {
     'URI': get_mongodb_uri(),
