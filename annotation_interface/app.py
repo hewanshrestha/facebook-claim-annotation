@@ -14,10 +14,11 @@ from PIL import Image
 import logging
 from pathlib import Path
 import time
+import ssl
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, PyMongoError
 from pymongo import ReplaceOne
-
+from datetime import datetime
 # Import configuration with error handling
 try:
     from config import (
@@ -63,14 +64,54 @@ def get_collection_name(annotator_id):
 def get_mongodb_connection():
     """Get MongoDB connection with SSL configuration for Streamlit Cloud"""
     try:
-        client = MongoClient(
-            MONGODB_URI,
-            tls=True,
-            tlsAllowInvalidCertificates=True
-        )
+        # Detect if running on Streamlit Cloud
+        is_streamlit_cloud = os.getenv('STREAMLIT_SHARING_MODE') or 'streamlit.app' in os.getenv('HOSTNAME', '')
+        
+        if is_streamlit_cloud:
+            logger.info("Detected Streamlit Cloud environment, using optimized settings")
+            # For Streamlit Cloud: Use the most basic connection possible
+            client = MongoClient(
+                MONGODB_URI,
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000,
+                retryWrites=True,
+                w='majority'
+            )
+        else:
+            logger.info("Detected local environment, using standard SSL settings")
+            # For localhost: Create a permissive SSL context
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            # Try connection with custom SSL context first
+            try:
+                client = MongoClient(
+                    MONGODB_URI,
+                    ssl_context=ssl_context,
+                    serverSelectionTimeoutMS=10000
+                )
+                # Test the connection
+                client.admin.command('ping')
+                return client
+            except Exception as ssl_error:
+                logger.warning(f"SSL context connection failed, trying alternative: {ssl_error}")
+                
+                # Fallback: Try with minimal TLS settings
+                client = MongoClient(
+                    MONGODB_URI,
+                    tls=True,
+                    tlsAllowInvalidCertificates=True,
+                    serverSelectionTimeoutMS=15000,
+                    connectTimeoutMS=15000,
+                    socketTimeoutMS=15000
+                )
+        
         # Test the connection
         client.admin.command('ping')
         return client
+            
     except ConnectionFailure as e:
         logger.error(f"MongoDB connection failed: {e}")
         raise
@@ -340,7 +381,8 @@ def save_annotation(annotator_id, item_id, annotation, current_item):
                 "post_id": original_post_id,
                 "text": current_item["text"],
                 "image_id": current_item["image_id"],
-                "label": annotation
+                "label": annotation,
+                "timestamp": datetime.now().isoformat()
             }
             
             # Upsert the annotation (insert if not exists, update if exists)
