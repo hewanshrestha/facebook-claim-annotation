@@ -7,3 +7,5 @@ data_processing.ipynb
 guidelines_pilot_phase.md
 guidelines_with_topics.md
 */__pycache__
+.python-version
+.streamlit/
