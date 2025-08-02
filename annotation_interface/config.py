@@ -29,4 +29,4 @@ GUIDELINES_FILE = f"{BASE_DIR}/guidelines.md"
 
 # Development mode
 DEBUG_MODE = False
-LIMIT_DATASET_SIZE = 10  # Use None in production
+LIMIT_DATASET_SIZE = None  # Use None in production

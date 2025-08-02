@@ -1,22 +1,42 @@
 ## Task 1: Claim Detection
-Please select **Claim** if the image-text pair can be confirmed using some sources and includes any of the following information:
 
-• Reference to who, what, when, where, etc.<br>
-• A definition, procedure, law, or process<br>
-• Numbers or quantities (e.g., money amounts, cases, death counts)<br>
-• Verifiable predictions<br>
-• Mentions of people, events, or locations<br>
-• References to images or videos<br>
-• Personal opinions that contain fact-checkable elements
+Select **Claim** if the image–text pair contains a verifiable assertion that can be confirmed via external sources and includes at least one of the following elements:
+
+• **Local Context**: References to country-specific entities, events, or administrative units. 
+
+• **Who/What/When/Where**: Specific individuals, organizations, dates, or locations within the country.
+
+• **Procedures, Laws, Policies**: Citations of country-specific legislation, government orders, or processes.
+
+• **Numbers and Statistics**: Local figures such as case counts, budget amounts, or turnout numbers.
+
+• **Verifiable Predictions**: Forecasts about monsoons, election outcomes, or economic indicators affecting the country.
+
+• **Image References**: Claims about the content of the image, especially when depicting country-specific contexts.
+
+• **Text Overlays & Memes**: Claims embedded in image text overlays or memes.
+
+Label as **No Claim** if none of the above criteria are met or the text is purely opinion, anecdote, or greeting without verifiable content.
+
 
 ## Task 2: Checkworthiness Detection
-Please select **Checkworthy** if it has one or more of the following properties:
 
-• **Harmful**: Attacks a person, group, organization, country, race, or community<br>
-• U**rgent or Breaking News**: Involves prominent people, current events, or rapidly spreading news<br>
-• **Up-to-date**: References recent laws, policies, or documents (e.g., treaties, clauses, agreements)
+For items labeled Claim in Task 1, select **Check-worthy** if the claim exhibits one or more of the following properties—tailored to high-impact Nepali Facebook content:
 
+• **Harmful or Defamatory Content**: Attacks or rumors against individuals, parties, ethnic groups, or communities that can incite social discord.
 
+• **Urgent/Breaking News**: Statements about active crises, protests, disasters, or policy shifts.
 
-## Need Help?
-If you have any questions or need clarification, please contact the project administrator. 
+• **Public-Interest Value**: Claims affecting large populations—health alerts, educational reforms, constitutional amendments.
+
+• **Recent-Law & Official Rulings**: References to newly enacted laws, Supreme Court decisions, treaties influencing the citizens.
+
+• **Visual Sensationalism & Mismatch**: Dramatic images (collapsed bridges, riots) paired with urgent text or when image content contradicts text claims.
+
+• **Emotive or Panic-Inducing Language**: Posts evoking fear or outrage.
+
+• **Conspiracy/Scandal Indicators**: Unverified plots or scandals.
+
+• **Repost or Source Alerts**: Mentions of viral chains or second-hand sources that require origin tracing.
+
+Label as **Not Check-worthy** if the claim lacks these high-impact or urgency cues despite being verifiable.
