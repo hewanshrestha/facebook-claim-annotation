@@ -2,9 +2,9 @@
 """
 Nepali Facebook Claim Annotation Interface
 
-Data Storage Structures:
-- Both MongoDB and Local: Use same structure with fields: annotator_id, post_id, text, image_id, label
-- MongoDB additionally includes: _id (internal identifier)
+Data Storage Structure:
+- Local: Use JSONL format with fields: annotator_id, post_id, text, image_id, label
+- GitHub: Save directly to GitHub repository using GitHub API
 """
 import streamlit as st
 import pandas as pd
@@ -14,16 +14,11 @@ from PIL import Image
 import logging
 from pathlib import Path
 import time
-import certifi
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, PyMongoError
-from pymongo import ReplaceOne
 from datetime import datetime
+
 # Import configuration with error handling
 try:
     from config import (
-        STORAGE_TYPE,
-        MONGODB_CONFIG,
         VALID_ANNOTATORS,
         get_dataset_paths,
         BASE_DIR,
@@ -52,153 +47,39 @@ st.set_page_config(
     layout="wide"
 )
 
-# MongoDB Configuration from config file
-MONGODB_URI = MONGODB_CONFIG['URI']
-MONGODB_DATABASE = MONGODB_CONFIG['DATABASE']
+def get_storage_config():
+    """Get storage configuration dynamically to avoid caching issues"""
+    STORAGE_TYPE = st.secrets.get('STORAGE_TYPE', 'local')
+    GITHUB_TOKEN = st.secrets.get('GITHUB_TOKEN', None)
+    GITHUB_REPO_OWNER = st.secrets.get('GITHUB_REPO_OWNER', 'hewanshrestha')
+    GITHUB_REPO_NAME = st.secrets.get('GITHUB_REPO_NAME', 'facebook-claim-annotation')
+    GITHUB_ANNOTATIONS_FOLDER = st.secrets.get('GITHUB_ANNOTATIONS_FOLDER', 'annotations')
+    
+    return STORAGE_TYPE, GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_ANNOTATIONS_FOLDER
 
-# MongoDB utility functions
-def get_collection_name(annotator_id):
-    """Get collection name for a specific annotator"""
-    return annotator_id
-
-def get_mongodb_connection():
-    """Get MongoDB connection with proper TLS certificate handling"""
-    try:
-        # Use optimized settings for Streamlit Cloud deployment
-        client = MongoClient(
-            MONGODB_URI,
-            tls=True,
-            tlsCAFile=certifi.where(),
-            serverSelectionTimeoutMS=30000,  # Increased timeout for cloud deployment
-            connectTimeoutMS=30000,  # Increased timeout for cloud deployment
-            socketTimeoutMS=30000,  # Increased timeout for cloud deployment
-            maxPoolSize=10,  # Connection pool for better performance
-            retryWrites=True,  # Enable retryable writes
-            w='majority'  # Write concern for data consistency
-        )
-        # Test the connection with timeout
-        client.admin.command('ping')
-        logger.info("✅ MongoDB connection established successfully")
-        return client
-    except ConnectionFailure as e:
-        logger.error(f"❌ MongoDB connection failed: {e}")
-        st.error(f"MongoDB Connection Error: {str(e)}")
-        st.error("Please check your internet connection and MongoDB credentials.")
-        raise
-    except Exception as e:
-        logger.error(f"❌ Error connecting to MongoDB: {e}")
-        st.error(f"Unexpected MongoDB Error: {str(e)}")
-        raise
-
-def get_mongodb_collection(annotator_id):
-    """Get MongoDB collection for annotations for a specific annotator"""
-    client = get_mongodb_connection()
-    db = client[MONGODB_DATABASE]
-    collection_name = get_collection_name(annotator_id)
-    collection = db[collection_name]
-    return collection
-
-def create_annotation_id(annotator_id, item_id):
-    """Create a unique annotation ID combining annotator and item IDs"""
-    return f"{annotator_id}_{item_id}"
-
-def test_mongodb_connection():
-    """Test MongoDB connection and return status"""
-    try:
-        client = get_mongodb_connection()
-        # Test the connection with a simple command
-        client.admin.command('ping')
-        
-        # Test database access
-        db = client[MONGODB_DATABASE]
-        
-        # Test collection creation with a sample annotator
-        sample_collection_name = get_collection_name("annotator_01")
-        sample_collection = db[sample_collection_name]
-        
-        # Try to count documents (should work even if empty)
-        count = sample_collection.count_documents({})
-        
-        client.close()
-        return True, f"MongoDB connection successful. Database and collections accessible. Document count: {count}"
-    except ConnectionFailure as e:
-        return False, f"MongoDB connection failed: {str(e)}"
-    except Exception as e:
-        return False, f"MongoDB error: {str(e)}"
-
-def get_mongodb_health_status():
-    """Get real-time MongoDB health status for debugging"""
-    try:
-        import time
-        start_time = time.time()
-        
-        # Test basic connection
-        client = get_mongodb_connection()
-        connection_time = time.time() - start_time
-        
-        # Test database operations
-        db = client[MONGODB_DATABASE]
-        collections = db.list_collection_names()
-        
-        # Test write operation
-        test_collection = db['health_check']
-        test_doc = {"timestamp": datetime.now().isoformat(), "status": "healthy"}
-        test_collection.insert_one(test_doc)
-        
-        # Clean up test document
-        test_collection.delete_one({"status": "healthy"})
-        
-        client.close()
-        
-        return {
-            "status": "healthy",
-            "connection_time_ms": round(connection_time * 1000, 2),
-            "database": MONGODB_DATABASE,
-            "collections_count": len(collections),
-            "timestamp": datetime.now().isoformat()
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }
-
-def get_mongodb_stats(annotator_id):
-    """Get MongoDB annotation statistics for an annotator"""
-    try:
-        collection = get_mongodb_collection(annotator_id)
-        
-        # Count total annotations for this annotator
-        total_count = collection.count_documents({"annotator_id": annotator_id})
-        
-        # Count by claim status (using unified field name)
-        claim_count = collection.count_documents({
-            "annotator_id": annotator_id,
-            "label.claim_status": "Claim"
-        })
-        
-        no_claim_count = collection.count_documents({
-            "annotator_id": annotator_id,
-            "label.claim_status": "No Claim"
-        })
-        
-        # Count check-worthy claims (using unified field name)
-        checkworthy_count = collection.count_documents({
-            "annotator_id": annotator_id,
-            "label.claim_status": "Claim",
-            "label.checkworthiness": "Check-worthy"
-        })
-        
-        return {
-            "total": total_count,
-            "claims": claim_count,
-            "no_claims": no_claim_count,
-            "checkworthy": checkworthy_count
-        }
-    except Exception as e:
-        logger.error(f"Error getting MongoDB stats: {e}")
-        return None
+def initialize_github_storage():
+    """Initialize GitHub storage if configured"""
+    STORAGE_TYPE, GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_ANNOTATIONS_FOLDER = get_storage_config()
+    
+    github_storage = None
+    if STORAGE_TYPE == 'github':
+        try:
+            from github_storage import GitHubStorage
+            if GITHUB_TOKEN:
+                github_storage = GitHubStorage(
+                    token=GITHUB_TOKEN,
+                    repo_owner=GITHUB_REPO_OWNER,
+                    repo_name=GITHUB_REPO_NAME,
+                    folder=GITHUB_ANNOTATIONS_FOLDER
+                )
+            else:
+                st.error("GitHub token not found. Please set GITHUB_TOKEN in secrets.")
+                st.stop()
+        except ImportError as e:
+            st.error(f"Error importing GitHub storage: {str(e)}")
+            st.stop()
+    
+    return github_storage, STORAGE_TYPE
 
 def get_annotator_dirs(annotator_id):
     """Get the annotation and log directories for an annotator"""
@@ -329,7 +210,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 def load_guidelines():
     """Load annotation guidelines from markdown file"""
     try:
@@ -369,112 +249,83 @@ def load_dataset(annotator_id):
         return pd.DataFrame()
 
 def save_annotation(annotator_id, item_id, annotation, current_item):
-    """Save annotation to MongoDB or local file"""
+    """Save annotation to local file or GitHub repository"""
     logger.debug(f"Starting save_annotation for item {item_id}")
     
-    if STORAGE_TYPE == 'mongodb':
-        logger.debug("MongoDB storage is enabled, saving to MongoDB")
-        try:
-            collection = get_mongodb_collection(annotator_id)
-            
-            # Create a unique ID for the annotation
-            annotation_id = create_annotation_id(annotator_id, item_id)
-            
-            # Get the original post ID from the current item (check multiple possible field names)
-            original_post_id = current_item.get('postId') or current_item.get('post_id') or current_item.get('id') or item_id
-            
-            # Prepare the unified annotation document for MongoDB
-            annotation_doc = {
-                "_id": annotation_id,
-                "annotator_id": annotator_id,
-                "post_id": original_post_id,
-                "text": current_item["text"],
-                "image_id": current_item["image_id"],
-                "label": annotation,
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            # Upsert the annotation (insert if not exists, update if exists)
-            result = collection.replace_one(
-                {"_id": annotation_id}, 
-                annotation_doc, 
-                upsert=True
-            )
-            
-            if result.upserted_id:
-                logger.info(f"New annotation inserted to MongoDB for item {item_id}")
-            elif result.modified_count > 0:
-                logger.info(f"Annotation updated in MongoDB for item {item_id}")
-            else:
-                logger.info(f"Annotation saved to MongoDB for item {item_id}")
-                
-        except ConnectionFailure as e:
-            logger.error(f"MongoDB connection failed: {e}", exc_info=True)
-            st.error(f"Failed to connect to MongoDB: {e}")
-        except PyMongoError as e:
-            logger.error(f"MongoDB error: {e}", exc_info=True)
-            st.error(f"Error saving to MongoDB: {e}")
-        except Exception as e:
-            logger.error(f"Error saving to MongoDB: {e}", exc_info=True)
-            raise
+    # Get the original post ID from the current item (check multiple possible field names)
+    original_post_id = current_item.get('postId') or current_item.get('post_id') or current_item.get('id') or item_id
+    
+    annotation_data = {
+        "annotator_id": annotator_id,
+        "post_id": original_post_id,
+        "text": current_item["text"],
+        "image_id": current_item["image_id"],
+        "label": annotation,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    github_storage, STORAGE_TYPE = initialize_github_storage()
+    
+    if STORAGE_TYPE == 'github' and github_storage:
+        # Save to GitHub
+        logger.debug("GitHub storage is enabled, saving to GitHub")
+        success = github_storage.save_single_annotation(annotator_id, annotation_data)
+        if success:
+            logger.info(f"Annotation saved to GitHub for item {item_id}")
+        else:
+            logger.error(f"Failed to save annotation to GitHub for item {item_id}")
+            # Fallback to local storage if GitHub fails
+            logger.info("Falling back to local storage")
+            _save_annotation_locally(annotator_id, annotation_data)
     else:
-        # Save locally using the same unified format
+        # Save locally using the unified format
         logger.debug("Local storage is enabled, saving locally")
-        annotations_dir, _ = get_annotator_dirs(annotator_id)
-        jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
-        
-        # Get the original post ID from the current item (check multiple possible field names)
-        original_post_id = current_item.get('postId') or current_item.get('post_id') or current_item.get('id') or item_id
-        
-        annotation_data = {
-            "annotator_id": annotator_id,
-            "post_id": original_post_id,
-            "text": current_item["text"],
-            "image_id": current_item["image_id"],
-            "label": annotation,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        # Convert to JSON string
-        json_line = json.dumps(annotation_data, ensure_ascii=False)
-        with open(jsonl_file, 'a', encoding='utf-8') as f:
-            f.write(json_line + '\n')
-        logger.debug(f"Saved annotation locally to {jsonl_file}")
+        _save_annotation_locally(annotator_id, annotation_data)
     
     logger.info(f"Annotation saved for item {item_id}")
 
+def _save_annotation_locally(annotator_id, annotation_data):
+    """Helper function to save annotation locally"""
+    annotations_dir, _ = get_annotator_dirs(annotator_id)
+    jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
+    
+    # Convert to JSON string
+    json_line = json.dumps(annotation_data, ensure_ascii=False)
+    with open(jsonl_file, 'a', encoding='utf-8') as f:
+        f.write(json_line + '\n')
+    logger.debug(f"Saved annotation locally to {jsonl_file}")
+
 def get_annotation_progress(annotator_id):
-    """Get annotation progress for an annotator from MongoDB or local file"""
+    """Get annotation progress for an annotator from local file or GitHub repository"""
     annotations = []
     
-    if STORAGE_TYPE == 'mongodb':
+    github_storage, STORAGE_TYPE = initialize_github_storage()
+    
+    if STORAGE_TYPE == 'github' and github_storage:
+        # Get from GitHub
         try:
-            collection = get_mongodb_collection(annotator_id)
-            
-            # Find all annotations for the specific annotator
-            annotations = list(collection.find({"annotator_id": annotator_id}))
-            # Convert ObjectId to string for JSON serialization
-            for ann in annotations:
-                ann['_id'] = str(ann['_id'])
-        except ConnectionFailure as e:
-            logger.error(f"MongoDB connection failed: {e}", exc_info=True)
-            st.error(f"Failed to connect to MongoDB: {e}")
-        except PyMongoError as e:
-            logger.error(f"MongoDB error: {e}", exc_info=True)
-            st.error(f"Error reading from MongoDB: {e}")
+            annotations = github_storage.get_annotations(annotator_id)
+            logger.debug(f"Retrieved {len(annotations)} annotations from GitHub for {annotator_id}")
         except Exception as e:
-            logger.error(f"Error reading from MongoDB: {e}", exc_info=True)
-            raise
+            logger.error(f"Error getting annotations from GitHub: {str(e)}")
+            # Fallback to local storage
+            annotations = _get_annotations_locally(annotator_id)
     else:
         # Use local file
-        annotations_dir, _ = get_annotator_dirs(annotator_id)
-        jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
-        if os.path.exists(jsonl_file):
-            with open(jsonl_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    if line.strip():
-                        annotations.append(json.loads(line))
+        annotations = _get_annotations_locally(annotator_id)
     
+    return annotations
+
+def _get_annotations_locally(annotator_id):
+    """Helper function to get annotations from local storage"""
+    annotations = []
+    annotations_dir, _ = get_annotator_dirs(annotator_id)
+    jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
+    if os.path.exists(jsonl_file):
+        with open(jsonl_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.strip():
+                    annotations.append(json.loads(line))
     return annotations
 
 def get_annotator_items(df, annotator_id):
@@ -488,29 +339,13 @@ def get_next_unannotated_item(annotator_id, df):
     
     annotated_items = set()
     
-    if STORAGE_TYPE == 'mongodb':
-        try:
-            collection = get_mongodb_collection(annotator_id)
-            # Find all annotated items for this annotator using unified format
-            annotations = collection.find({"annotator_id": annotator_id}, {"post_id": 1})
-            annotated_items = {ann["post_id"] for ann in annotations}
-        except Exception as e:
-            logger.error(f"Error reading from MongoDB: {e}", exc_info=True)
-            # Fall back to checking session state
-            annotated_items = set()
-    else:
-        # Use local file
-        annotations_dir, _ = get_annotator_dirs(annotator_id)
-        jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
-        if os.path.exists(jsonl_file):
-            with open(jsonl_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    if line.strip():
-                        data = json.loads(line)
-                        # Use post_id for matching (support both old and new format)
-                        post_id = data.get('post_id') or data.get('item_id')
-                        if post_id:
-                            annotated_items.add(post_id)
+    # Get all existing annotations using unified method
+    existing_annotations = get_annotation_progress(annotator_id)
+    for data in existing_annotations:
+        # Use post_id for matching (support both old and new format)
+        post_id = data.get('post_id') or data.get('item_id')
+        if post_id:
+            annotated_items.add(post_id)
     
     # Also check temporary annotations
     temp_annotated_items = set(st.session_state.temp_annotations.keys())
@@ -525,51 +360,29 @@ def get_next_unannotated_item(annotator_id, df):
 
 def get_previous_annotations(annotator_id):
     """Get all previous annotations for an annotator"""
-    if STORAGE_TYPE == 'mongodb':
-        try:
-            collection = get_mongodb_collection(annotator_id)
-            
-            # Find all annotations for the specific annotator
-            annotations = list(collection.find({"annotator_id": annotator_id}))
-            # Convert ObjectId to string for JSON serialization
-            for ann in annotations:
-                ann['_id'] = str(ann['_id'])
-            return annotations
-        except ConnectionFailure as e:
-            logger.error(f"MongoDB connection failed: {e}", exc_info=True)
-            st.error(f"Failed to connect to MongoDB: {e}")
-        except PyMongoError as e:
-            logger.error(f"MongoDB error: {e}", exc_info=True)
-            st.error(f"Error reading from MongoDB: {e}")
-        except Exception as e:
-            logger.error(f"Error reading from MongoDB: {e}", exc_info=True)
-            raise
-    else:
-        annotations_dir, _ = get_annotator_dirs(annotator_id)
-        jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
-        annotations = []
-        
-        if os.path.exists(jsonl_file):
-            with open(jsonl_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    if line.strip():
-                        annotations.append(json.loads(line))
-        
-        return annotations
+    return get_annotation_progress(annotator_id)
 
 def update_annotation(annotator_id, item_id, new_annotation, current_item):
     """Update an existing annotation"""
-    if STORAGE_TYPE == 'mongodb':
-        try:
-            collection = get_mongodb_collection(annotator_id)
-            annotation_id = create_annotation_id(annotator_id, item_id)
-            
-            # Get the original post ID from the current item (check multiple possible field names)
+    # Handle local storage using unified format
+    annotations_dir, _ = get_annotator_dirs(annotator_id)
+    jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
+    
+    # Read all annotations
+    annotations = get_previous_annotations(annotator_id)
+    
+    # Find and update the specific annotation
+    updated = False
+    for i, ann in enumerate(annotations):
+        # Match by post_id (support both old and new format)
+        ann_post_id = ann.get('post_id') or ann.get('item_id')
+        current_post_id = current_item.get('post_id') or current_item.get('postId') or current_item.get('id')
+        
+        if ann_post_id == current_post_id:
+            # Get the original post ID from the current item
             original_post_id = current_item.get('postId') or current_item.get('post_id') or current_item.get('id') or item_id
             
-            # Prepare the updated annotation document using unified format
-            updated_annotation = {
-                "_id": annotation_id,
+            annotations[i] = {
                 "annotator_id": annotator_id,
                 "post_id": original_post_id,
                 "text": current_item["text"],
@@ -577,168 +390,87 @@ def update_annotation(annotator_id, item_id, new_annotation, current_item):
                 "label": new_annotation,
                 "timestamp": datetime.now().isoformat()
             }
-            
-            # Update the document in MongoDB
-            result = collection.replace_one(
-                {"_id": annotation_id}, 
-                updated_annotation, 
-                upsert=True
-            )
-            
-            if result.modified_count > 0:
-                logger.info(f"Annotation updated in MongoDB for item {item_id}")
-                return True
-            elif result.upserted_id:
-                logger.info(f"Annotation inserted in MongoDB for item {item_id}")
-                return True
-            else:
-                logger.warning(f"No changes made to annotation in MongoDB for item {item_id}")
-                return True
-                
-        except ConnectionFailure as e:
-            logger.error(f"MongoDB connection failed: {e}", exc_info=True)
-            st.error(f"Failed to connect to MongoDB: {e}")
-            return False
-        except PyMongoError as e:
-            logger.error(f"MongoDB error: {e}", exc_info=True)
-            st.error(f"Error updating in MongoDB: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error updating in MongoDB: {e}", exc_info=True)
-            raise
-    else:
-        # Handle local storage using unified format
-        annotations_dir, _ = get_annotator_dirs(annotator_id)
-        jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
-        
-        # Read all annotations
-        annotations = get_previous_annotations(annotator_id)
-        
-        # Find and update the specific annotation
-        updated = False
-        for i, ann in enumerate(annotations):
-            # Match by post_id (support both old and new format)
-            ann_post_id = ann.get('post_id') or ann.get('item_id')
-            current_post_id = current_item.get('post_id') or current_item.get('postId') or current_item.get('id')
-            
-            if ann_post_id == current_post_id:
-                # Get the original post ID from the current item
-                original_post_id = current_item.get('postId') or current_item.get('post_id') or current_item.get('id') or item_id
-                
-                annotations[i] = {
-                    "annotator_id": annotator_id,
-                    "post_id": original_post_id,
-                    "text": current_item["text"],
-                    "image_id": current_item["image_id"],
-                    "label": new_annotation,
-                    "timestamp": datetime.now().isoformat()
-                }
-                updated = True
-                break
-        
-        # Convert annotations back to JSONL format
-        updated_content = ""
-        for ann in annotations:
-            updated_content += json.dumps(ann, ensure_ascii=False) + '\n'
-        
-        # Update local file
-        with open(jsonl_file, 'w', encoding='utf-8') as f:
-            f.write(updated_content)
-        
-        logger.info(f"Annotation updated for item {item_id}")
-        return updated
+            updated = True
+            break
+    
+    # Convert annotations back to JSONL format
+    updated_content = ""
+    for ann in annotations:
+        updated_content += json.dumps(ann, ensure_ascii=False) + '\n'
+    
+    # Update local file
+    with open(jsonl_file, 'w', encoding='utf-8') as f:
+        f.write(updated_content)
+    
+    logger.info(f"Annotation updated for item {item_id}")
+    return updated
 
 def save_all_temporary_annotations(annotator_id):
-    """Save all temporary annotations to MongoDB or local file"""
+    """Save all temporary annotations to local file or GitHub repository"""
     try:
         if not st.session_state.temp_annotations:
             st.warning("No temporary annotations to save!")
             return False
         
-        logger.info(f"Saving {len(st.session_state.temp_annotations)} temporary annotations to {STORAGE_TYPE}")
+        logger.info(f"Saving {len(st.session_state.temp_annotations)} temporary annotations")
         
-        if STORAGE_TYPE == 'mongodb':
-            try:
-                collection = get_mongodb_collection(annotator_id)
-                
-                # Insert all temporary annotations using bulk operations for efficiency
-                operations = []
-                
-                for item_id, annotation_data in st.session_state.temp_annotations.items():
-                    annotation_id = create_annotation_id(annotation_data["annotator_id"], item_id)
-                    
-                    # Get the original post ID from the annotation data
-                    # Use the stored original_post_id, or fall back to item_id
-                    original_post_id = annotation_data.get('original_post_id') or annotation_data["item_id"]
-                    
-                    # Convert to MongoDB structure using unified format
-                    mongodb_annotation = {
-                        "_id": annotation_id,
-                        "annotator_id": annotation_data["annotator_id"],
-                        "post_id": original_post_id,
-                        "text": annotation_data["text"],
-                        "image_id": annotation_data["image_id"],
-                        "label": annotation_data["annotation"],
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    
-                    operations.append(
-                        ReplaceOne(
-                            {"_id": annotation_id}, 
-                            mongodb_annotation, 
-                            upsert=True
-                        )
-                    )                
-                if operations:
-                    result = collection.bulk_write(operations)
-                    logger.info(f"Successfully saved {len(st.session_state.temp_annotations)} annotations to MongoDB")
-                    logger.info(f"Upserted: {result.upserted_count}, Modified: {result.modified_count}")
-                    return True
-                else:
-                    logger.warning("No operations to perform")
-                    return True
-                    
-            except ConnectionFailure as e:
-                logger.error(f"MongoDB connection failed: {e}", exc_info=True)
-                st.error(f"Failed to connect to MongoDB: {e}")
-                return False
-            except PyMongoError as e:
-                logger.error(f"MongoDB error: {e}", exc_info=True)
-                st.error(f"Error saving to MongoDB: {e}")
-                return False
-            except Exception as e:
-                logger.error(f"Error saving to MongoDB: {e}", exc_info=True)
-                raise
+        # Convert temporary annotations to list format
+        annotations_to_save = []
+        for item_id, annotation_data in st.session_state.temp_annotations.items():
+            # Get the original post ID from the stored annotation data
+            original_post_id = annotation_data.get('original_post_id') or annotation_data["item_id"]
+            
+            # Create unified format for storage
+            local_annotation_data = {
+                "annotator_id": annotation_data["annotator_id"],
+                "post_id": original_post_id,
+                "text": annotation_data["text"],
+                "image_id": annotation_data["image_id"],
+                "label": annotation_data["annotation"],
+                "timestamp": datetime.now().isoformat()
+            }
+            annotations_to_save.append(local_annotation_data)
+        
+        github_storage, STORAGE_TYPE = initialize_github_storage()
+        
+        if STORAGE_TYPE == 'github' and github_storage:
+            # Save to GitHub
+            logger.debug("GitHub storage is enabled, saving all annotations to GitHub")
+            success = github_storage.append_to_jsonl_file(annotator_id, annotations_to_save)
+            if success:
+                logger.info(f"Successfully saved {len(st.session_state.temp_annotations)} annotations to GitHub")
+                return True
+            else:
+                logger.error("Failed to save annotations to GitHub")
+                # Fallback to local storage if GitHub fails
+                logger.info("Falling back to local storage")
+                return _save_all_annotations_locally(annotator_id, annotations_to_save)
         else:
-            # Save locally (keep original structure)
-            annotations_dir, _ = get_annotator_dirs(annotator_id)
-            jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
-            
-            # Convert temporary annotations to JSONL format
-            jsonl_content = ""
-            for item_id, annotation_data in st.session_state.temp_annotations.items():
-                # Get the original post ID from the stored annotation data
-                original_post_id = annotation_data.get('original_post_id') or annotation_data["item_id"]
-                
-                # Create unified format for local storage
-                local_annotation_data = {
-                    "annotator_id": annotation_data["annotator_id"],
-                    "post_id": original_post_id,
-                    "text": annotation_data["text"],
-                    "image_id": annotation_data["image_id"],
-                    "label": annotation_data["annotation"],
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                jsonl_content += json.dumps(local_annotation_data, ensure_ascii=False) + '\n'
-            
-            with open(jsonl_file, 'a', encoding='utf-8') as f:
-                f.write(jsonl_content)
-            logger.info(f"Successfully saved {len(st.session_state.temp_annotations)} annotations locally")
-            return True
+            # Save locally
+            logger.debug("Local storage is enabled, saving all annotations locally")
+            return _save_all_annotations_locally(annotator_id, annotations_to_save)
             
     except Exception as e:
         logger.error(f"Error in save_all_temporary_annotations: {str(e)}", exc_info=True)
+        return False
+
+def _save_all_annotations_locally(annotator_id, annotations_to_save):
+    """Helper function to save all annotations locally"""
+    try:
+        annotations_dir, _ = get_annotator_dirs(annotator_id)
+        jsonl_file = os.path.join(annotations_dir, f"{annotator_id}_annotations.jsonl")
+        
+        # Convert annotations to JSONL format
+        jsonl_content = ""
+        for annotation_data in annotations_to_save:
+            jsonl_content += json.dumps(annotation_data, ensure_ascii=False) + '\n'
+        
+        with open(jsonl_file, 'a', encoding='utf-8') as f:
+            f.write(jsonl_content)
+        logger.info(f"Successfully saved {len(annotations_to_save)} annotations locally")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving annotations locally: {str(e)}")
         return False
 
 def main():
@@ -784,54 +516,35 @@ def main():
         
         # Storage Configuration and Status
         st.header("Storage Configuration")
+        STORAGE_TYPE, GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_ANNOTATIONS_FOLDER = get_storage_config()
         st.write(f"**Current Storage:** {STORAGE_TYPE.title()}")
-        
-        if STORAGE_TYPE == 'mongodb':
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                with st.spinner("Testing MongoDB connection..."):
-                    is_connected, status_msg = test_mongodb_connection()
-            with col2:
-                if st.button("🔄 Refresh", help="Refresh connection status"):
-                    st.rerun()
-            
-            if is_connected:
-                st.success("✅ " + status_msg)
-                
-                # Real-time health monitoring
-                with st.expander("📊 Real-time Health Status", expanded=False):
-                    health_status = get_mongodb_health_status()
-                    if health_status["status"] == "healthy":
-                        st.success(f"🟢 System Healthy")
-                        st.write(f"**Connection Time:** {health_status['connection_time_ms']}ms")
-                        st.write(f"**Database:** {health_status['database']}")
-                        st.write(f"**Collections:** {health_status['collections_count']}")
-                        st.write(f"**Last Check:** {health_status['timestamp']}")
-                    else:
-                        st.error(f"🔴 System Unhealthy")
-                        st.error(f"**Error:** {health_status['error']}")
-                        st.write(f"**Last Check:** {health_status['timestamp']}")
-            else:
-                st.error("❌ " + status_msg)
-                st.warning("Please check your MongoDB configuration or switch to local storage.")
-                
-                # Troubleshooting tips
-                with st.expander("🔧 Troubleshooting Tips", expanded=True):
-                    st.markdown("""
-                    **Common Issues:**
-                    1. **Missing Dependencies:** Ensure `pymongo` and `certifi` are in requirements.txt
-                    2. **Invalid Credentials:** Check MongoDB username/password in Streamlit secrets
-                    3. **Network Issues:** Verify internet connectivity and MongoDB Atlas whitelist
-                    4. **IP Whitelist:** Add `0.0.0.0/0` to MongoDB Atlas IP whitelist for Streamlit Cloud
-                    
-                    **Deployment Checklist:**
-                    - ✅ Add MongoDB secrets in Streamlit Cloud app settings
-                    - ✅ Update requirements.txt with MongoDB dependencies
-                    - ✅ Configure MongoDB Atlas IP whitelist
-                    - ✅ Verify cluster URL and credentials
-                    """)
-        else:
+        if STORAGE_TYPE == 'local':
             st.info("💾 Using local file storage")
+        elif STORAGE_TYPE == 'github':
+            st.info("🌐 Using GitHub storage")
+            if GITHUB_TOKEN:
+                # Test GitHub connection
+                try:
+                    from github_storage import GitHubStorage
+                    github_storage = GitHubStorage(
+                        token=GITHUB_TOKEN,
+                        repo_owner=GITHUB_REPO_OWNER,
+                        repo_name=GITHUB_REPO_NAME,
+                        folder=GITHUB_ANNOTATIONS_FOLDER
+                    )
+                    if github_storage.test_connection():
+                        st.success("✅ GitHub connection successful")
+                    else:
+                        st.error("❌ GitHub connection failed")
+                except ImportError:
+                    st.error("GitHub storage module not found. Please ensure it's installed.")
+                    st.stop()
+            else:
+                st.error("GitHub token not found in secrets. Please set GITHUB_TOKEN in secrets.")
+                st.stop()
+        else:
+            st.error("Unknown storage type. Please set STORAGE_TYPE in secrets.")
+            st.stop()
         
         # Guidelines
         st.header("Guidelines")
@@ -852,32 +565,13 @@ def main():
         st.header("Your Progress")
         assigned_items = get_annotator_items(load_dataset(annotator_id), annotator_id)
         
-        if STORAGE_TYPE == 'mongodb':
-            # Get stats from MongoDB
-            mongo_stats = get_mongodb_stats(annotator_id)
-            if mongo_stats:
-                temp_annotations_count = len(st.session_state.temp_annotations)
-                total_annotations = mongo_stats["total"] + temp_annotations_count
-                
-                st.write(f"**Total annotations:** {total_annotations}")
-                st.write(f"**Unsaved annotations:** {temp_annotations_count}")
-                st.write(f"**Total items assigned:** {len(assigned_items)}")
-                st.write(f"**Remaining items:** {len(assigned_items) - total_annotations}")
-            else:
-                st.error("Unable to fetch MongoDB statistics")
-                # Fallback to local count
-                temp_annotations_count = len(st.session_state.temp_annotations)
-                total_annotations = temp_annotations_count + st.session_state.submitted_annotations
-                st.write(f"Total annotations: {total_annotations}")
-                st.write(f"Total items assigned: {len(assigned_items)}")
-                st.write(f"Remaining items: {len(assigned_items) - total_annotations}")
-        else:
-            # Use local storage logic
-            temp_annotations_count = len(st.session_state.temp_annotations)
-            total_annotations = temp_annotations_count + st.session_state.submitted_annotations
-            st.write(f"Total annotations: {total_annotations}")
-            st.write(f"Total items assigned: {len(assigned_items)}")
-            st.write(f"Remaining items: {len(assigned_items) - total_annotations}")
+        # Use local storage logic
+        temp_annotations_count = len(st.session_state.temp_annotations)
+        total_annotations = temp_annotations_count + st.session_state.submitted_annotations
+        st.write(f"**Total annotations:** {total_annotations}")
+        st.write(f"**Unsaved annotations:** {temp_annotations_count}")
+        st.write(f"**Total items assigned:** {len(assigned_items)}")
+        st.write(f"**Remaining items:** {len(assigned_items) - total_annotations}")
     
     # Main content area
     st.title("Facebook Claim Annotation")

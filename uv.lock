@@ -231,6 +231,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pillow" },
     { name = "pymongo" },
+    { name = "requests" },
     { name = "streamlit" },
     { name = "supabase" },
 ]
@@ -247,7 +248,8 @@ requires-dist = [
     { name = "dnspython", specifier = ">=2.3.0" },
     { name = "pandas", specifier = ">=1.5.0" },
     { name = "pillow", specifier = ">=9.0.0" },
-    { name = "pymongo", specifier = ">=4.3.3" },
+    { name = "pymongo", extras = ["srv"], specifier = ">=4.3.3" },
+    { name = "requests", specifier = ">=2.28.0" },
     { name = "streamlit", specifier = ">=1.28.0" },
     { name = "supabase", specifier = ">=2.17.0" },
 ]
