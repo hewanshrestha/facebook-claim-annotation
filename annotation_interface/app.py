@@ -558,6 +558,8 @@ def main():
             st.info("📚 **Dataset:** Nepali Facebook Claims")
         elif "telugu" in dataset_paths["dataset_file"].lower():
             st.info("📚 **Dataset:** Telugu Facebook Claims")
+        elif "bangla" in dataset_paths["dataset_file"].lower():
+            st.info("📚 **Dataset:** Bangla Facebook Claims")
         else:
             st.info(f"📚 **Dataset:** {dataset_paths['dataset_file']}")
         
