@@ -5,7 +5,7 @@ Configuration file for the annotation interface.
 """
 
 # Valid annotator IDs
-VALID_ANNOTATORS = [f"annotator_{i:02d}" for i in range(1, 8)]
+VALID_ANNOTATORS = [f"annotator_{i:02d}" for i in range(1, 11)]
 
 # Dataset assignment
 def get_dataset_paths(annotator_id):
