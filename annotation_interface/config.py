@@ -20,6 +20,11 @@ def get_dataset_paths(annotator_id):
             "images_dir": "pilot_data_telugu/images", 
             "dataset_file": "pilot_data_telugu/pilot_data.json"
         }
+    elif annotator_id in ["annotator_08", "annotator_09", "annotator_10"]:
+        return {
+            "images_dir": "pilot_data_bangla/images",
+            "dataset_file": "pilot_data_bangla/pilot_data.json"
+        }
     else:
         raise ValueError(f"Invalid annotator ID: {annotator_id}")
 
