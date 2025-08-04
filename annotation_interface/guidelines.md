@@ -1,42 +1,62 @@
 ## Task 1: Claim Detection
 
-Select **Claim** if the image–text pair contains a verifiable assertion that can be confirmed via external sources and includes at least one of the following elements:
+Select `Claim` if the image–text pair makes a verifiable assertion that can be checked using reliable external sources (e.g., news outlets, government websites, official reports), and it includes at least one of the following:
 
-• **Local Context**: References to country-specific entities, events, or administrative units. 
+`Note`: **⚠️ A Claim must be a clear, fact-checkable assertion, not just anything you can Google.**
 
-• **Who/What/When/Where**: Specific individuals, organizations, dates, or locations within the country.
+• Local Context: Mentions of country-specific places, political parties, events, or administrative units.
 
-• **Procedures, Laws, Policies**: Citations of country-specific legislation, government orders, or processes.
+• Who / What / When / Where: Statements about specific individuals, organizations, dates, or locations.
 
-• **Numbers and Statistics**: Local figures such as case counts, budget amounts, or turnout numbers.
+• Laws, Procedures, or Policies: References to rules, regulations, or official processes.
 
-• **Verifiable Predictions**: Forecasts about monsoons, election outcomes, or economic indicators affecting the country.
+• Numbers or Statistics: Quantitative data like counts, budgets, or turnout figures.
 
-• **Image References**: Claims about the content of the image, especially when depicting country-specific contexts.
+• Verifiable Predictions: Forecasts or claims about future events.
 
-• **Text Overlays & Memes**: Claims embedded in image text overlays or memes.
+• Image-Based Claims: Assertions about the image itself, especially if it depicts something country-specific.
 
-Label as **No Claim** if none of the above criteria are met or the text is purely opinion, anecdote, or greeting without verifiable content.
+• Text Overlays or Memes: When memes or image text contain checkable facts.
+
+Label as `No Claim` if:
+
+• Generic or Promotional Statements
+
+• Generic Definitions or Explanations
+
+• Pure opinion, emotion, or sarcasm
+
+• Hashtags, name mentions, or vague references
+
+• Insufficient detail for verification
 
 
 ## Task 2: Checkworthiness Detection
 
-For items labeled Claim in Task 1, select **Check-worthy** if the claim exhibits one or more of the following properties—tailored to high-impact Facebook content:
+For items labeled `Claim`, select `Check-worthy` if the claim contains one or more of the following impact-driven or urgency indicators — especially in public, political, or high-risk content:
 
-• **Harmful or Defamatory Content**: Attacks or rumors against individuals, parties, ethnic groups, or communities that can incite social discord.
+`Check-worthy` = **A claim a fact-checker should verify because it could mislead or impact the public.**
 
-• **Urgent/Breaking News**: Statements about active crises, protests, disasters, or policy shifts.
+• Harmful or Defamatory Content: Targets individuals, groups, or communities with accusations or hate.
 
-• **Public-Interest Value**: Claims affecting large populations—health alerts, educational reforms, constitutional amendments.
+• Urgent/Breaking News: Tied to disasters, violence, protests, or immediate developments.
 
-• **Recent-Law & Official Rulings**: References to newly enacted laws, Supreme Court decisions, treaties influencing the citizens.
+• Public-Interest Value: Affects a large population (e.g., health, economy, education, environment).
 
-• **Visual Sensationalism & Mismatch**: Dramatic images (collapsed bridges, riots) paired with urgent text or when image content contradicts text claims.
+• Recent Laws, Court Rulings, Policies: Especially if newly introduced or controversial.
 
-• **Emotive or Panic-Inducing Language**: Posts evoking fear or outrage.
+• Image-Text Mismatch or Sensationalism: Shocking images used misleadingly or emotionally.
 
-• **Conspiracy/Scandal Indicators**: Unverified plots or scandals.
+• Emotive or Panic-Inducing Language: Words meant to provoke fear, anger, or mass reaction.
 
-• **Repost or Source Alerts**: Mentions of viral chains or second-hand sources that require origin tracing.
+• Conspiracies or Scandals: Claims that hint at cover-ups, secret dealings, or major plots.
 
-Label as **Not Check-worthy** if the claim lacks these high-impact or urgency cues despite being verifiable.
+• Repost or Source Alerts: Viral resharing, copied content, or second-hand sources.
+
+Label as `Not Check-worthy` if:
+
+• The claim is fact-checkable but low-impact, benign, or not socially important.
+
+• It lacks signs of urgency, virality, or public consequence.
+
+• It’s personal or trivial.
