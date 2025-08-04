@@ -21,7 +21,7 @@ Label as **No Claim** if none of the above criteria are met or the text is purel
 
 ## Task 2: Checkworthiness Detection
 
-For items labeled Claim in Task 1, select **Check-worthy** if the claim exhibits one or more of the following properties—tailored to high-impact Nepali Facebook content:
+For items labeled Claim in Task 1, select **Check-worthy** if the claim exhibits one or more of the following properties—tailored to high-impact Facebook content:
 
 • **Harmful or Defamatory Content**: Attacks or rumors against individuals, parties, ethnic groups, or communities that can incite social discord.
 
