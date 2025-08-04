@@ -144,6 +144,7 @@ st.markdown("""
         font-size: 18px;
         line-height: 1.6;
         font-family: 'Noto Sans Devanagari', Arial, sans-serif;
+        color: #333333 !important;
     }
     .step-box, .step-box-2 {
         padding: 10px 15px;
