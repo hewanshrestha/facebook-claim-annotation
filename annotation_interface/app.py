@@ -515,53 +515,54 @@ def main():
         logger = setup_logging(annotator_id)
         
         # Storage Configuration and Status
-        st.header("Storage Configuration")
-        STORAGE_TYPE, GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_ANNOTATIONS_FOLDER = get_storage_config()
-        st.write(f"**Current Storage:** {STORAGE_TYPE.title()}")
-        if STORAGE_TYPE == 'local':
-            st.info("💾 Using local file storage")
-        elif STORAGE_TYPE == 'github':
-            st.info("🌐 Using GitHub storage")
-            if GITHUB_TOKEN:
-                # Test GitHub connection
-                try:
-                    from github_storage import GitHubStorage
-                    github_storage = GitHubStorage(
-                        token=GITHUB_TOKEN,
-                        repo_owner=GITHUB_REPO_OWNER,
-                        repo_name=GITHUB_REPO_NAME,
-                        folder=GITHUB_ANNOTATIONS_FOLDER
-                    )
-                    if github_storage.test_connection():
-                        st.success("✅ GitHub connection successful")
-                    else:
-                        st.error("❌ GitHub connection failed")
-                except ImportError:
-                    st.error("GitHub storage module not found. Please ensure it's installed.")
-                    st.stop()
-            else:
-                st.error("GitHub token not found in secrets. Please set GITHUB_TOKEN in secrets.")
-                st.stop()
-        else:
-            st.error("Unknown storage type. Please set STORAGE_TYPE in secrets.")
-            st.stop()
+        # st.header("Storage Configuration")
+        # STORAGE_TYPE, GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_ANNOTATIONS_FOLDER = get_storage_config()
+        # st.write(f"**Current Storage:** {STORAGE_TYPE.title()}")
+        # if STORAGE_TYPE == 'local':
+        #     st.info("💾 Using local file storage")
+        # elif STORAGE_TYPE == 'github':
+        #     st.info("🌐 Using GitHub storage")
+        #     if GITHUB_TOKEN:
+        #         # Test GitHub connection
+        #         try:
+        #             from github_storage import GitHubStorage
+        #             github_storage = GitHubStorage(
+        #                 token=GITHUB_TOKEN,
+        #                 repo_owner=GITHUB_REPO_OWNER,
+        #                 repo_name=GITHUB_REPO_NAME,
+        #                 folder=GITHUB_ANNOTATIONS_FOLDER
+        #             )
+        #             if github_storage.test_connection():
+        #                 st.success("✅ GitHub connection successful")
+        #             else:
+        #                 st.error("❌ GitHub connection failed")
+        #         except ImportError:
+        #             st.error("GitHub storage module not found. Please ensure it's installed.")
+        #             st.stop()
+        #     else:
+        #         st.error("GitHub token not found in secrets. Please set GITHUB_TOKEN in secrets.")
+        #         st.stop()
+        # else:
+        #     st.error("Unknown storage type. Please set STORAGE_TYPE in secrets.")
+        #     st.stop()
         
+
         # Guidelines
         st.header("Guidelines")
         guidelines = load_guidelines()
         st.markdown(guidelines)
         
         # Dataset Assignment Info
-        st.header("Your Assignment")
-        dataset_paths = get_dataset_paths(annotator_id)
-        if "nepali" in dataset_paths["dataset_file"].lower():
-            st.info("📚 **Dataset:** Nepali Facebook Claims")
-        elif "telugu" in dataset_paths["dataset_file"].lower():
-            st.info("📚 **Dataset:** Telugu Facebook Claims")
-        elif "bangla" in dataset_paths["dataset_file"].lower():
-            st.info("📚 **Dataset:** Bangla Facebook Claims")
-        else:
-            st.info(f"📚 **Dataset:** {dataset_paths['dataset_file']}")
+        # st.header("Your Assignment")
+        # dataset_paths = get_dataset_paths(annotator_id)
+        # if "nepali" in dataset_paths["dataset_file"].lower():
+        #     st.info("📚 **Dataset:** Nepali Facebook Claims")
+        # elif "telugu" in dataset_paths["dataset_file"].lower():
+        #     st.info("📚 **Dataset:** Telugu Facebook Claims")
+        # elif "bangla" in dataset_paths["dataset_file"].lower():
+        #     st.info("📚 **Dataset:** Bangla Facebook Claims")
+        # else:
+        #     st.info(f"📚 **Dataset:** {dataset_paths['dataset_file']}")
         
         # Progress tracking
         st.header("Your Progress")
@@ -679,23 +680,27 @@ def main():
         # Annotation form
         st.markdown('<h5>Label the Claim</h5>', unsafe_allow_html=True)
     
-        # Step 1: Claim Detection
+        # Task 1: Claim Detection
         st.markdown('''
             <div class="step-box">
-                <p class="step-text"><b>Q1: Claim Detection</b> <br> Does the image-text pair make a factual claim that can be verified?</p>
+                <p class="step-text"><b>Q1: Claim Detection</b> <br> Does this post state a fact that a general audience needs to verify?</p>
             </div>
         ''', unsafe_allow_html=True)
     
-        claim_options = ["Claim", "No Claim"]
-        claim_index = 0 if st.session_state.display_claim_status == "Claim" else 1
-        claim_status = st.radio(
+        # Display options as Yes/No but map to Claim/No Claim
+        claim_display_options = ["Yes", "No"]
+        claim_display_index = 0 if st.session_state.display_claim_status == "Claim" else 1
+        claim_display_selection = st.radio(
             "Is this a claim?",
-            claim_options,
-            index=claim_index,
+            claim_display_options,
+            index=claim_display_index,
             horizontal=True,
             label_visibility="collapsed"
         )
-
+        
+        # Map display selection to actual stored values
+        claim_status = "Claim" if claim_display_selection == "Yes" else "No Claim"
+        
         # Task 2: Checkworthiness Detection
         checkworthiness = None
         if claim_status == "Claim":
@@ -705,15 +710,19 @@ def main():
                 </div>
             ''', unsafe_allow_html=True)
         
-            checkworthy_options = ["Check-worthy", "Not Check-worthy"]
-            checkworthy_index = 0 if st.session_state.display_checkworthiness == "Check-worthy" else 1
-            checkworthiness = st.radio(
+            # Display options as Yes/No but map to Check-worthy/Not Check-worthy
+            checkworthy_display_options = ["Yes", "No"]
+            checkworthy_display_index = 0 if st.session_state.display_checkworthiness == "Check-worthy" else 1
+            checkworthy_display_selection = st.radio(
                 "Is this claim check-worthy?",
-                checkworthy_options,
-                index=checkworthy_index,
+                checkworthy_display_options,
+                index=checkworthy_display_index,
                 horizontal=True,
                 label_visibility="collapsed"
             )
+            
+            # Map display selection to actual stored values
+            checkworthiness = "Check-worthy" if checkworthy_display_selection == "Yes" else "Not Check-worthy"
 
         # Navigation buttons
         st.markdown("""<div class="nav-buttons">""", unsafe_allow_html=True)

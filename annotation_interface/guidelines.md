@@ -1,62 +1,34 @@
 ## Task 1: Claim Detection
 
-Select `Claim` if the image–text pair makes a verifiable assertion that can be checked using reliable external sources (e.g., news outlets, government websites, official reports), and it includes at least one of the following:
+Please select **Claim** if the image-text pair can be confirmed using some sources and includes any of the following information:
 
-`Note`: **⚠️ A Claim must be a clear, fact-checkable assertion, not just anything you can Google.**
+**Note: ⚠️ A Claim must be a clear, fact-checkable assertion, not just anything you can Google.**
 
-• Local Context: Mentions of country-specific places, political parties, events, or administrative units.
+• Reference to who, what, when, where, etc (“দিনাজপুর বড়মাঠে আত্মহত্যার চেষ্টা: হাসপাতালে তরুণী, সংকটাপন্ন অবস্থা (Suicide attempt in Dinajpur Baramath: Young woman in hospital, critical condition)")<br>
+• A definition, procedure, law, or process (“संविधानको धारा १६ अनुसार, प्रत्येक नागरिकलाई जीवनको अधिकार छ। (Article 16 of the constitution guarantees right to life)")<br>
+• Numbers or quantities (“नेपालमा २४ घण्टामा १,५४२ नयाँ कोरोना भाइरस संक्रमण पुष्टि (1,542 new coronavirus cases in Nepal in 24 hours)")<br>
+• Verifiable predictions (“পুনর্বাসন প্রকল্পের জন্য ১,০০০ কোটি টাকা অনুমোদন করা হবে (1,000 crore taka will be approved for rehabilitation projects)")<br>
+• Mentions of people, events, or locations (“ఈ ఏడాది విశాఖలో అంతర్జాతీయ పోరుగు ప్రారంభం (International yogurt festival begins in Visakhapatnam this year)")<br>
+• Personal opinions that contain fact-checkable elements (“मेरो विचारमा, यो कानून गत वर्ष संशोधन गरिएको हो। (In my opinion, this law was amended last year)")
 
-• Who / What / When / Where: Statements about specific individuals, organizations, dates, or locations.
+---
 
-• Laws, Procedures, or Policies: References to rules, regulations, or official processes.
+Please select **No Claim** if the post falls into any of these categories:
 
-• Numbers or Statistics: Quantitative data like counts, budgets, or turnout figures.
+• Personal/Private: Personal stories, family updates, travel diaries. <br>
+• Promotional: Ads, offers, “like/share” calls, business promotions.<br>
+• Common Knowledge: Basic facts everyone knows.<br>
+• Greetings/Social: Holiday wishes, congratulations, condolences.<br>
+• Vague or Insufficient: Mentions without assertion<br>
 
-• Verifiable Predictions: Forecasts or claims about future events.
-
-• Image-Based Claims: Assertions about the image itself, especially if it depicts something country-specific.
-
-• Text Overlays or Memes: When memes or image text contain checkable facts.
-
-Label as `No Claim` if:
-
-• Generic or Promotional Statements
-
-• Generic Definitions or Explanations
-
-• Pure opinion, emotion, or sarcasm
-
-• Hashtags, name mentions, or vague references
-
-• Insufficient detail for verification
-
+---
 
 ## Task 2: Checkworthiness Detection
+Please select **Checkworthy** if it has one or more of the following properties:
 
-For items labeled `Claim`, select `Check-worthy` if the claim contains one or more of the following impact-driven or urgency indicators — especially in public, political, or high-risk content:
+• **Harmful**: Attacks a person, group, organization, country, race, or community (“आज दलित समुदाय माथि पुनः हमला गरियो (Today another attack on the Dalit community)")<br>
+• **Urgent or Breaking News**: Involves prominent people, current events, or rapidly spreading news (“విజయవాడలో భారీ వర్షాల కారణంగా పైపులు పేలాయ్, 5 మృతి (Heavy rains in Vijayawada cause burst pipes, 5 dead)")<br>
+• **Up-to-date**: References recent laws, policies, or documents (e.g., treaties, clauses, agreements) (“নতুন প্রবিধানের অধীনে, ধারা 24B আজ থেকে কার্যকর হয়েছে (Under new regulations, Article 24B came into force today)")
 
-`Check-worthy` = **A claim a fact-checker should verify because it could mislead or impact the public.**
-
-• Harmful or Defamatory Content: Targets individuals, groups, or communities with accusations or hate.
-
-• Urgent/Breaking News: Tied to disasters, violence, protests, or immediate developments.
-
-• Public-Interest Value: Affects a large population (e.g., health, economy, education, environment).
-
-• Recent Laws, Court Rulings, Policies: Especially if newly introduced or controversial.
-
-• Image-Text Mismatch or Sensationalism: Shocking images used misleadingly or emotionally.
-
-• Emotive or Panic-Inducing Language: Words meant to provoke fear, anger, or mass reaction.
-
-• Conspiracies or Scandals: Claims that hint at cover-ups, secret dealings, or major plots.
-
-• Repost or Source Alerts: Viral resharing, copied content, or second-hand sources.
-
-Label as `Not Check-worthy` if:
-
-• The claim is fact-checkable but low-impact, benign, or not socially important.
-
-• It lacks signs of urgency, virality, or public consequence.
-
-• It’s personal or trivial.
+## Need Help?
+If you have any questions or need clarification, please contact the project administrator. 
