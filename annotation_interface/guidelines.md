@@ -4,6 +4,8 @@ Please select **Claim** if the image-text pair can be confirmed using some sourc
 
 **Note: ⚠️ A Claim must be a clear, fact-checkable assertion, not just anything you can Google.**
 
+**⚠️ Important: Questions, religious/spiritual expressions, and general opinions without specific facts are NOT claims.**
+
 • Reference to who, what, when, where, etc (“দিনাজপুর বড়মাঠে আত্মহত্যার চেষ্টা: হাসপাতালে তরুণী, সংকটাপন্ন অবস্থা (Suicide attempt in Dinajpur Baramath: Young woman in hospital, critical condition)")<br>
 • A definition, procedure, law, or process (“संविधानको धारा १६ अनुसार, प्रत्येक नागरिकलाई जीवनको अधिकार छ। (Article 16 of the constitution guarantees right to life)")<br>
 • Numbers or quantities (“नेपालमा २४ घण्टामा १,५४२ नयाँ कोरोना भाइरस संक्रमण पुष्टि (1,542 new coronavirus cases in Nepal in 24 hours)")<br>
@@ -15,16 +17,21 @@ Please select **Claim** if the image-text pair can be confirmed using some sourc
 
 Please select **No Claim** if the post falls into any of these categories:
 
-• Personal/Private: Personal stories, family updates, travel diaries. <br>
-• Promotional: Ads, offers, “like/share” calls, business promotions.<br>
-• Common Knowledge: Basic facts everyone knows.<br>
-• Greetings/Social: Holiday wishes, congratulations, condolences.<br>
-• Vague or Insufficient: Mentions without assertion<br>
+• **Personal/Private**: Personal stories, family updates, travel diaries.<br>
+• **Promotional**: Ads, offers, "like/share" calls, business promotions.<br>
+• **Common Knowledge**: Basic facts everyone knows (e.g., "exercise is good for health").<br>
+• **Greetings/Social**: Holiday wishes, congratulations, condolences, prayers, blessings.<br>
+• **Questions**: Any rhetorical or direct questions without factual assertions.<br>
+• **Vague or Insufficient**: Mentions without specific assertions or incomplete statements.<br>
+
+**💡 Remember: If a post contains both personal content AND specific factual claims, focus on the PRIMARY content type.**
 
 ---
 
 ## Task 2: Checkworthiness Detection
 Please select **Checkworthy** if it has one or more of the following properties:
+
+**⚠️ Note: Historical information (older events/policies) is usually NOT check-worthy unless controversial.**
 
 • **Harmful**: Attacks a person, group, organization, country, race, or community (“आज दलित समुदाय माथि पुनः हमला गरियो (Today another attack on the Dalit community)")<br>
 • **Urgent or Breaking News**: Involves prominent people, current events, or rapidly spreading news (“విజయవాడలో భారీ వర్షాల కారణంగా పైపులు పేలాయ్, 5 మృతి (Heavy rains in Vijayawada cause burst pipes, 5 dead)")<br>
