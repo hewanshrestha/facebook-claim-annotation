@@ -11,4 +11,5 @@ guidelines_with_topics.md
 .streamlit/
 .venv
 annotation_interface/annotator_0*
+reasoning_of_llms/
 DEPLOYMENT_GUIDE.md
