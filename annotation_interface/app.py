@@ -42,7 +42,7 @@ logging.getLogger('watchdog').setLevel(logging.WARNING)
 
 # Set page config first
 st.set_page_config(
-    page_title="Nepali Facebook Claim Annotation",
+    page_title="Facebook Claim Annotation",
     page_icon="📝",
     layout="wide"
 )

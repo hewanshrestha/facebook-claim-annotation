@@ -1,3 +1,3 @@
-# Nepali Facebook Data Annotation
+# Facebook Data Annotation
 
-This application provides an interface for annotating Nepali Facebook posts with claims and checkworthiness assessments.
+This application provides an interface for annotating Facebook posts with claims and checkworthiness assessments.
